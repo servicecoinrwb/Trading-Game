@@ -1,70 +1,130 @@
 On-Chain Trading Game dApp
-A decentralized trading simulation game built on the Base blockchain. This dApp allows users to connect their crypto wallets and practice trading with virtual funds in an on-chain environment.
 
-!
+A decentralized trading simulation game built on the Base blockchain.
+Players connect their crypto wallets and practice leveraged trading with virtual funds in a fully on-chain environment.
 
-Core Features
-Connect Wallet: Integrates with browser wallets like MetaMask.
+🎮 Core Features
 
-Virtual Balance: Players can register to receive 10,000 virtual USD to trade with.
+Connect Wallet
+Seamless integration with browser wallets like MetaMask.
 
-Leveraged Trading: Open long or short positions with user-defined margin and leverage.
+Virtual Balance
+Each new player receives 10,000 vUSD (virtual USD) to trade with.
 
-On-Chain Settlement: All trades are opened and resolved via a Solidity smart contract, acting as a trustless referee.
+Leveraged Trading
+Open long or short positions with user-defined margin and leverage.
 
-Manual Trade Management: Players can request to close their active positions at any time.
+On-Chain Settlement
+All trades are executed and resolved by a Solidity smart contract, ensuring fairness and transparency.
 
-Technology Stack
-Smart Contract: Solidity
+Manual Trade Management
+Players can close their open positions at any time before liquidation or target hit.
 
-Frontend: HTML, CSS, JavaScript (using the ethers.js library)
+🛠️ Technology Stack
 
-Blockchain: Base (or any EVM-compatible chain)
+Smart Contracts: Solidity
 
-How It Works
-The project consists of two main components:
+Frontend: HTML, CSS, JavaScript with ethers.js
 
-TradingGame.sol (The Smart Contract): This is the backend logic that lives on the blockchain. It manages player registration, virtual balances, and the rules for opening and resolving trades. It acts as the single source of truth for the game.
+Blockchain: Base (EVM-compatible)
 
-trading-dapp.html (The Frontend): This is the user interface. It allows players to interact with the smart contract by connecting their wallets and sending transactions to register, open trades, and close trades.
+⚙️ How It Works
 
-Trade resolution is handled by a designated Oracle address, which is responsible for pushing real-world price data to the smart contract to determine if a trade's Stop Loss or Take Profit has been hit.
+The system has two main components:
 
-Getting Started
-To run this project locally or deploy it yourself, follow these steps:
+TradingGame.sol (Smart Contract)
 
-Prerequisites:
+Manages player registration
 
-A browser with a crypto wallet extension (e.g., MetaMask).
+Tracks virtual balances
 
-An RPC endpoint for the Base network (e.g., from Infura or Alchemy).
+Enforces trading rules
 
-Testnet ETH on Base Sepolia for deployment fees.
+Processes trade openings, closures, and outcomes
 
-Deploy the Smart Contract:
+Uses an Oracle address to inject real-world price data for trade resolution
 
-Compile TradingGame.sol using a development environment like Remix or Hardhat.
+trading-dapp.html (Frontend)
 
-Deploy the compiled contract to the Base network.
+Web interface for players
 
-Copy the deployed contract's address and its ABI.
+Wallet connection and registration
 
-Configure the Frontend:
+Simple forms for opening and closing trades
 
-Open trading-dapp.html.
+Sends transactions directly to the contract
 
-Paste the contract address and ABI into the placeholder variables in the <script> section.
+🔮 Oracle Integration
 
-Launch:
+Trades reference real asset prices (e.g., BTC/USD).
 
-For local testing, simply open the trading-dapp.html file in your browser.
+An Oracle address pushes price updates to the smart contract.
 
-For public access, host the HTML file (e.g., using GitHub Pages).
+Stop Loss / Take Profit levels are resolved trustlessly on-chain.
 
-Play:
+🚀 Getting Started
+Prerequisites
 
-Connect your wallet.
+Browser wallet (MetaMask or similar)
 
-Click "Register" to get your virtual funds.
+RPC endpoint for Base (Infura / Alchemy)
 
-Enter your trade parameters and open a position!
+Testnet ETH on Base Sepolia for deployment
+
+Deploy the Smart Contract
+
+Compile TradingGame.sol in Remix or Hardhat
+
+Deploy to Base or Base Sepolia
+
+Copy the contract address and ABI
+
+Configure the Frontend
+
+Open trading-dapp.html
+
+Paste contract address + ABI in the <script> section
+
+Save and reload
+
+Launch
+
+For local testing: open trading-dapp.html in your browser
+
+For public hosting: deploy to GitHub Pages, Vercel, or Netlify
+
+📖 Gameplay
+
+Connect your wallet
+
+Click Register to mint 10,000 vUSD
+
+Choose your trade parameters:
+
+Asset (BTC/ETH mock pairs)
+
+Position (long or short)
+
+Margin size
+
+Leverage
+
+Stop Loss / Take Profit
+
+Confirm in your wallet
+
+Monitor or close your position manually
+
+🧱 Roadmap
+
+✅ Core virtual trading contract
+
+✅ Frontend wallet connection
+
+⏳ Oracle integration for live price feeds
+
+⏳ Leaderboard with on-chain scores
+
+⏳ NFT badges for milestones (e.g., first profit, best win streak)
+
+⏳ DAO-style governance for rule changes
