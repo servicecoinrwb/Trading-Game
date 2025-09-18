@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Trading Game dApp</title>
+    <title>ETH Trading Game dApp</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root {
@@ -17,18 +17,31 @@
             justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px;
         }
         #container {
-            background-color: var(--container-bg); border-radius: 12px; padding: 30px;
-            max-width: 600px; width: 100%; border: 1px solid var(--border-color);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); text-align: center;
+            background-color: var(--container-bg); border-radius: 12px; padding: 20px;
+            max-width: 800px; width: 100%; border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
-        h1 { color: var(--bitcoin-orange); }
-        button {
-            padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px;
-            border: none; cursor: pointer; transition: all 0.2s ease; color: white;
-            background-color: var(--highlight-blue); margin: 5px;
+        h1 { color: var(--bitcoin-orange); text-align: center; margin-top: 0; }
+
+        #chart-container {
+            background-color: #000; border-radius: 8px; border: 1px solid #444;
+            margin-bottom: 20px; position: relative;
         }
-        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.4); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #chart-svg { width: 100%; height: 300px; }
+        .candlestick.up { fill: var(--price-green); stroke: var(--price-green); }
+        .candlestick.down { fill: var(--price-red); stroke: var(--price-red); }
+        .wick { stroke-width: 1; }
+        .price-axis text { font-size: 10px; fill: var(--text-soft-color); }
+        .grid-line { stroke: #2a2a2a; stroke-width: 1; }
+        .price-line { stroke-width: 2; stroke-dasharray: 4; cursor: ns-resize; opacity: 0.8; }
+        #sl-line { stroke: var(--price-red); }
+        #tp-line { stroke: var(--price-green); }
+        #entry-line { stroke: var(--bitcoin-orange); }
+        .price-label { font-size: 10px; font-weight: bold; pointer-events: none; }
+        #sl-label { fill: var(--price-red); }
+        #tp-label { fill: var(--price-green); }
+        #entry-label { fill: var(--bitcoin-orange); }
+
         .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; margin: 20px 0; }
         .input-group { display: flex; flex-direction: column; }
         label { margin-bottom: 5px; color: var(--text-soft-color); font-size: 14px; }
@@ -38,25 +51,32 @@
         }
         #status, #account-info { margin-top: 20px; padding: 15px; background-color: #2c2c2c; border-radius: 8px; }
         .hidden { display: none; }
+        button {
+            padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px;
+            border: none; cursor: pointer; transition: all 0.2s ease; color: white; margin: 5px;
+        }
+        #connect-button { background-color: var(--highlight-blue); display: block; margin: 20px auto; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.4); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
     <div id="container">
-        <h1>On-Chain Trading Game</h1>
+        <h1>On-Chain ETH Trading Game</h1>
         
+        <div id="chart-container">
+            <svg id="chart-svg"></svg>
+        </div>
+
         <button id="connect-button">Connect Wallet</button>
 
         <div id="dapp-interface" class="hidden">
             <div id="account-info">
-                <p><strong>Status:</strong> <span id="connection-status">Disconnected</span></p>
-                <p><strong>Your Address:</strong> <span id="address"></span></p>
-                <p><strong>Virtual Balance:</strong> <span id="balance">0</span> VT-USD</p>
+                <p><strong>Status:</strong> <span id="connection-status">Disconnected</span> | <strong>Address:</strong> <span id="address"></span> | <strong>Balance:</strong> <span id="balance">0</span> VT-USD</p>
             </div>
 
-            <button id="register-button">Register for Game</button>
-            <hr style="border-color: var(--border-color); margin: 20px 0;">
-
             <div id="trade-creation">
+                <hr style="border-color: var(--border-color); margin: 20px 0;">
                 <h3>Open a New Position</h3>
                 <div class="controls-grid">
                     <div class="input-group">
@@ -64,39 +84,37 @@
                         <input type="number" id="margin" value="100">
                     </div>
                     <div class="input-group">
-                        <label for="leverage">Leverage (e.g., 10)</label>
+                        <label for="leverage">Leverage</label>
                         <input type="number" id="leverage" value="10">
                     </div>
                     <div class="input-group">
-                        <label for="entry-price">Entry Price</label>
-                        <input type="number" id="entry-price" placeholder="Current price...">
-                    </div>
-                    <div class="input-group">
-                        <label for="take-profit">Take Profit</label>
-                        <input type="number" id="take-profit" placeholder="Target price...">
+                        <label for="take-profit">Take Profit Price</label>
+                        <input type="number" id="take-profit" readonly>
                     </div>
                      <div class="input-group">
-                        <label for="stop-loss">Stop Loss</label>
-                        <input type="number" id="stop-loss" placeholder="Risk price...">
+                        <label for="stop-loss">Stop Loss Price</label>
+                        <input type="number" id="stop-loss" readonly>
                     </div>
                 </div>
-                <div>
+                <div style="text-align: center;">
                     <button id="long-button" style="background-color: var(--price-green);">Open Long</button>
                     <button id="short-button" style="background-color: var(--price-red);">Open Short</button>
                 </div>
             </div>
 
-             <div id="active-trade-info" class="hidden" style="margin-top: 20px; background-color: #333; padding: 15px; border-radius: 8px;">
+             <div id="active-trade-info" class="hidden" style="margin-top: 20px; text-align:center;">
                 <h4>Your Active Trade</h4>
                 <p id="active-trade-details"></p>
                 <button id="close-trade-button" style="background-color: var(--bitcoin-orange);">Request Manual Close</button>
              </div>
+             
+             <div id="status" style="margin-top: 15px;"></div>
+             <button id="register-button">Register for Game (10k VT-USD)</button>
         </div>
-
-        <div id="status"></div>
     </div>
 
     <script>
+        // --- Elements ---
         const connectButton = document.getElementById('connect-button');
         const registerButton = document.getElementById('register-button');
         const longButton = document.getElementById('long-button');
@@ -110,11 +128,170 @@
         const activeTradeInfo = document.getElementById('active-trade-info');
         const activeTradeDetails = document.getElementById('active-trade-details');
         const tradeCreationDiv = document.getElementById('trade-creation');
+        const svg = document.getElementById('chart-svg');
+        const tpInput = document.getElementById('take-profit');
+        const slInput = document.getElementById('stop-loss');
 
+        // --- Contract ---
         const contractAddress = "0xf0805B65E229DCd4859f28fB342816CbeC495cEd";
         const contractABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"tradeId","type":"uint256"},{"indexed":false,"internalType":"string","name":"reason","type":"string"}],"name":"TradeClosed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"tradeId","type":"uint256"},{"indexed":false,"internalType":"bool","name":"isLong","type":"bool"},{"indexed":false,"internalType":"uint256","name":"entryPrice","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"leverage","type":"uint256"}],"name":"TradeOpened","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"tradeId","type":"uint256"},{"indexed":false,"internalType":"int256","name":"pnl","type":"int256"},{"indexed":false,"internalType":"uint256","name":"newBalance","type":"uint256"}],"name":"TradeResolved","type":"event"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"activeTrades","outputs":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"bool","name":"isActive","type":"bool"},{"internalType":"bool","name":"isLong","type":"bool"},{"internalType":"uint256","name":"entryPrice","type":"uint256"},{"internalType":"uint256","name":"takeProfit","type":"uint256"},{"internalType":"uint256","name":"stopLoss","type":"uint256"},{"internalType":"uint256","name":"margin","type":"uint256"},{"internalType":"uint256","name":"leverage","type":"uint256"},{"internalType":"bool","name":"manualCloseRequested","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"closeTrade","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bool","name":"_isLong","type":"bool"},{"internalType":"uint256","name":"_margin","type":"uint256"},{"internalType":"uint256","name":"_leverage","type":"uint256"},{"internalType":"uint256","name":"_entryPrice","type":"uint256"},{"internalType":"uint256","name":"_takeProfit","type":"uint256"},{"internalType":"uint256","name":"_stopLoss","type":"uint256"}],"name":"openTrade","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"oracle","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"register","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_player","type":"address"},{"internalType":"uint256","name":"_currentPrice","type":"uint256"}],"name":"resolveTrade","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_newOracle","type":"address"}],"name":"setOracle","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"tradeCounter","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"virtualBalances","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}];
-        
         let provider, signer, contract;
+        
+        // --- Chart & UI State ---
+        let candles = [];
+        let takeProfitPrice = 0, stopLossPrice = 0, entryPrice = 0;
+        let svgWidth, svgHeight, candleWidth, maxCandles;
+        let draggedElement = null;
+
+        // --- Chart Drawing & Price Scale ---
+        function updateChartConstants() {
+            svgWidth = svg.clientWidth;
+            svgHeight = svg.clientHeight;
+            candleWidth = 5;
+            maxCandles = Math.floor(svgWidth / (candleWidth + 2));
+        }
+
+        const getPriceRange = () => {
+            const prices = candles.flatMap(c => [c.high, c.low]);
+            if(stopLossPrice) prices.push(stopLossPrice);
+            if(takeProfitPrice) prices.push(takeProfitPrice);
+            if(entryPrice) prices.push(entryPrice);
+            const minPrice = Math.min(...prices) * 0.998;
+            const maxPrice = Math.max(...prices) * 1.002;
+            return { minPrice, maxPrice };
+        };
+        const priceToY = (price) => {
+            const { minPrice, maxPrice } = getPriceRange();
+            if (maxPrice === minPrice) return svgHeight / 2;
+            return svgHeight - ((price - minPrice) / (maxPrice - minPrice)) * svgHeight;
+        };
+        const yToPrice = (y) => {
+            const { minPrice, maxPrice } = getPriceRange();
+            return ((svgHeight - y) / svgHeight) * (maxPrice - minPrice) + minPrice;
+        };
+
+        function drawChart() {
+            if (!svgWidth) updateChartConstants();
+            svg.innerHTML = ''; 
+            if (candles.length === 0) return;
+
+            const { minPrice, maxPrice } = getPriceRange();
+            const visibleCandles = candles.slice(-maxCandles);
+            
+            // Draw Gridlines & Price Axis
+            const priceAxis = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            const numGridLines = 6;
+            for (let i = 0; i <= numGridLines; i++) {
+                const price = minPrice + (i / numGridLines) * (maxPrice - minPrice);
+                const y = priceToY(price);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', 0); line.setAttribute('y1', y);
+                line.setAttribute('x2', svgWidth); line.setAttribute('y2', y);
+                line.setAttribute('class', 'grid-line');
+                svg.appendChild(line);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', svgWidth - 5); text.setAttribute('y', y - 5);
+                text.setAttribute('class', 'price-axis'); text.setAttribute('text-anchor', 'end');
+                text.textContent = price.toFixed(2);
+                priceAxis.appendChild(text);
+            }
+            svg.appendChild(priceAxis);
+            
+            visibleCandles.forEach((candle, i) => {
+                const x = i * (candleWidth + 2);
+                const yOpen = priceToY(candle.open); const yClose = priceToY(candle.close);
+                const yHigh = priceToY(candle.high); const yLow = priceToY(candle.low);
+                const wick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                wick.setAttribute('x1', x + candleWidth / 2); wick.setAttribute('y1', yHigh);
+                wick.setAttribute('x2', x + candleWidth / 2); wick.setAttribute('y2', yLow);
+                wick.setAttribute('class', `wick ${candle.close >= candle.open ? 'up' : 'down'}`);
+                svg.appendChild(wick);
+                const body = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                body.setAttribute('x', x); body.setAttribute('y', Math.min(yOpen, yClose));
+                body.setAttribute('width', candleWidth); body.setAttribute('height', Math.abs(yOpen - yClose) || 1);
+                body.setAttribute('class', `candlestick ${candle.close >= candle.open ? 'up' : 'down'}`);
+                svg.appendChild(body);
+            });
+            drawPriceLines();
+        }
+
+        function drawPriceLines() {
+            const drawLine = (id, price, labelPrefix, className) => {
+                if (!price || price === 0) return;
+                const y = priceToY(price);
+                let line = document.getElementById(`${id}-line`);
+                if (!line) {
+                    line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('id', `${id}-line`); line.setAttribute('class', `price-line`);
+                    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label.setAttribute('id', `${id}-label`); label.setAttribute('class', 'price-label');
+                    const hitBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    hitBox.setAttribute('id', `${id}-hitbox`);
+                    hitBox.setAttribute('height', 20); hitBox.setAttribute('width', svgWidth);
+                    hitBox.setAttribute('fill', 'transparent'); hitBox.style.cursor = 'ns-resize';
+                    hitBox.addEventListener('mousedown', () => { draggedElement = id; });
+                    svg.appendChild(line); svg.appendChild(label); svg.appendChild(hitBox);
+                }
+                line.setAttribute('x1', 0); line.setAttribute('y1', y);
+                line.setAttribute('x2', svgWidth); line.setAttribute('y2', y);
+                line.classList.add(className);
+                const label = document.getElementById(`${id}-label`);
+                label.setAttribute('x', 5); label.setAttribute('y', y - 5);
+                label.textContent = `${labelPrefix}: ${price.toFixed(2)}`;
+                label.classList.add(className);
+                document.getElementById(`${id}-hitbox`).setAttribute('y', y - 10);
+            };
+
+            drawLine('sl', stopLossPrice, 'SL', 'sl');
+            drawLine('tp', takeProfitPrice, 'TP', 'tp');
+            drawLine('entry', entryPrice, 'Entry', 'entry');
+        }
+
+        svg.addEventListener('mousemove', (e) => {
+            if (!draggedElement) return;
+            const y = e.clientY - svg.getBoundingClientRect().top;
+            const price = parseFloat(yToPrice(y).toFixed(2));
+            if (draggedElement === 'sl') {
+                stopLossPrice = price;
+                slInput.value = price.toFixed(2);
+            } else if (draggedElement === 'tp') {
+                takeProfitPrice = price;
+                tpInput.value = price.toFixed(2);
+            }
+            drawChart();
+        });
+        window.addEventListener('mouseup', () => { draggedElement = null; });
+
+        // --- Data & Blockchain Interaction ---
+        async function fetchPriceAndGenerateCandles() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+                const data = await response.json();
+                const currentPrice = data.ethereum.usd;
+                
+                // For UI display, create a chart ending at the current price
+                candles = [];
+                let price = currentPrice * (1 + (Math.random() - 0.5) * 0.05); // Start within 5% of current price
+                for(let i=0; i<maxCandles - 1; i++){
+                     const open = price;
+                     const change = (Math.random() - 0.5) * (price * 0.005);
+                     price += change;
+                     const high = Math.max(open, price) + (Math.random() * price * 0.002);
+                     const low = Math.min(open, price) - (Math.random() * price * 0.002);
+                     candles.push({open, high, low, close: price});
+                }
+                candles.push({open: price, high: Math.max(price, currentPrice), low: Math.min(price, currentPrice), close: currentPrice});
+                
+                drawChart();
+                return currentPrice;
+
+            } catch (error) {
+                console.error("Could not fetch price:", error);
+                statusEl.textContent = "Could not fetch live price data.";
+                return null;
+            }
+        }
 
         async function connectWallet() {
             if (typeof window.ethereum !== 'undefined') {
@@ -123,20 +300,14 @@
                     provider = new ethers.providers.Web3Provider(window.ethereum);
                     signer = provider.getSigner();
                     contract = new ethers.Contract(contractAddress, contractABI, signer);
-                    
                     const address = await signer.getAddress();
                     addressEl.textContent = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
                     connectionStatusEl.textContent = 'Connected';
-                    connectionStatusEl.style.color = 'var(--price-green)';
-                    
                     connectButton.classList.add('hidden');
                     dappInterface.classList.remove('hidden');
-
-                    updateUI();
-                    // Listen for account changes
-                    window.ethereum.on('accountsChanged', (accounts) => {
-                        window.location.reload();
-                    });
+                    await updateUI();
+                    setInterval(updateUI, 10000); // Periodically refresh UI
+                    window.ethereum.on('accountsChanged', () => window.location.reload());
                 } catch (error) {
                     console.error("Connection failed:", error);
                     statusEl.textContent = 'Error: Could not connect to wallet.';
@@ -150,31 +321,38 @@
             if (!contract) return;
             try {
                 const userAddress = await signer.getAddress();
-                // Update Balance
                 const balanceWei = await contract.virtualBalances(userAddress);
                 balanceEl.textContent = ethers.utils.formatEther(balanceWei);
 
-                // Update Active Trade Info
                 const trade = await contract.activeTrades(userAddress);
+                const currentPrice = await fetchPriceAndGenerateCandles();
+
                 if(trade.isActive) {
                     const side = trade.isLong ? 'Long' : 'Short';
-                    // Assuming price has 6 decimals of precision as in our previous example
-                    const entry = ethers.utils.formatUnits(trade.entryPrice, 6); 
-                    activeTradeDetails.textContent = `Side: ${side}, Entry: $${entry}, Leverage: ${trade.leverage}x`;
-                    activeTradeInfo.classList.remove('hidden');
-                    tradeCreationDiv.classList.add('hidden'); // Hide trade creation if trade is active
+                    entryPrice = parseFloat(ethers.utils.formatUnits(trade.entryPrice, 6));
+                    takeProfitPrice = parseFloat(ethers.utils.formatUnits(trade.takeProfit, 6));
+                    stopLossPrice = parseFloat(ethers.utils.formatUnits(trade.stopLoss, 6));
                     
-                    // Show or hide close button
+                    activeTradeDetails.textContent = `Side: ${side}, Entry: $${entryPrice.toFixed(2)}, Leverage: ${trade.leverage}x`;
+                    activeTradeInfo.classList.remove('hidden');
+                    tradeCreationDiv.classList.add('hidden');
                     closeTradeButton.disabled = trade.manualCloseRequested;
-
                 } else {
+                    entryPrice = 0; // Clear entry line from chart
                     activeTradeInfo.classList.add('hidden');
-                    tradeCreationDiv.classList.remove('hidden'); // Show trade creation if no trade is active
+                    tradeCreationDiv.classList.remove('hidden');
+                    
+                    // Set up draggable lines for a new trade
+                    if (currentPrice) {
+                        takeProfitPrice = currentPrice * 1.02;
+                        stopLossPrice = currentPrice * 0.98;
+                        tpInput.value = takeProfitPrice.toFixed(2);
+                        slInput.value = stopLossPrice.toFixed(2);
+                    }
                 }
-
+                drawChart();
             } catch(error) {
                 console.error("UI Update failed:", error);
-                statusEl.textContent = 'Error: Could not fetch data from the contract.';
             }
         }
 
@@ -186,29 +364,31 @@
                 statusEl.textContent = 'Registration successful!';
                 updateUI();
             } catch (error) {
-                console.error(error);
                 statusEl.textContent = `Error: ${error.reason || 'Registration failed.'}`;
             }
         }
 
         async function openTrade(isLong) {
             try {
+                const currentPrice = candles.length > 0 ? candles[candles.length-1].close : 0;
+                if(!currentPrice) {
+                    statusEl.textContent = "Error: Cannot determine current price to open trade.";
+                    return;
+                }
+                
                 const margin = ethers.utils.parseEther(document.getElementById('margin').value);
                 const leverage = document.getElementById('leverage').value;
-                // Prices are multiplied by 10^6 for 6 decimals of precision.
-                const entryPrice = Math.floor(parseFloat(document.getElementById('entry-price').value) * 1e6);
-                const takeProfit = Math.floor(parseFloat(document.getElementById('take-profit').value) * 1e6);
-                const stopLoss = Math.floor(parseFloat(document.getElementById('stop-loss').value) * 1e6);
+                const entry = Math.floor(currentPrice * 1e6); // Market order uses current price
+                const takeProfit = Math.floor(takeProfitPrice * 1e6);
+                const stopLoss = Math.floor(stopLossPrice * 1e6);
 
                 statusEl.textContent = 'Sending transaction to open trade...';
-                const tx = await contract.openTrade(isLong, margin, leverage, entryPrice, takeProfit, stopLoss);
+                const tx = await contract.openTrade(isLong, margin, leverage, entry, takeProfit, stopLoss);
                 await tx.wait();
-
                 statusEl.textContent = 'Trade opened successfully!';
                 updateUI();
 
             } catch(error) {
-                console.error(error);
                 statusEl.textContent = `Error: ${error.reason || 'Could not open trade.'}`;
             }
         }
@@ -218,20 +398,28 @@
             try {
                 const tx = await contract.closeTrade();
                 await tx.wait();
-                statusEl.textContent = 'Manual close requested successfully! Waiting for oracle.';
+                statusEl.textContent = 'Manual close requested! Waiting for oracle to resolve.';
                 updateUI();
             } catch (error) {
-                console.error(error);
                 statusEl.textContent = `Error: ${error.reason || 'Could not request close.'}`;
             }
         }
+        
+        // --- Initial Load ---
+        window.onload = () => {
+             updateChartConstants();
+             fetchPriceAndGenerateCandles(); // Draw initial chart on load
+        }
+        window.onresize = () => {
+            updateChartConstants();
+            drawChart();
+        };
 
         connectButton.addEventListener('click', connectWallet);
         registerButton.addEventListener('click', register);
         longButton.addEventListener('click', () => openTrade(true));
         shortButton.addEventListener('click', () => openTrade(false));
         closeTradeButton.addEventListener('click', closeTrade);
-
     </script>
 </body>
 </html>
